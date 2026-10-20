@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: yt-downloader
+    env: docker
+    plan: free
+    region: ohio
+    autoDeploy: true

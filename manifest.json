@@ -1,0 +1,23 @@
+{
+  "name": "YouTube Downloader",
+  "short_name": "YT Downloader",
+  "description": "Baixe vídeos, músicas e playlists com capas e metadados oficiais",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0f11",
+  "theme_color": "#ff0000",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

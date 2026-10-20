@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>YouTube & Playlist Downloader</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#ff0000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="YT Downloader" />
+  <link rel="apple-touch-icon" href="/static/icon-192.png" />
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f0f11;
+      --surface:   #1a1a1f;
+      --surface2:  #242429;
+      --border:    #2e2e36;
+      --accent:    #ff0000;
+      --accent2:   #ff4444;
+      --text:      #f0f0f0;
+      --muted:     #888;
+      --green:     #22c55e;
+      --purple:    #818cf8;
+      --radius:    12px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 80px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    header .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    header .logo svg { width: 44px; height: 44px; }
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    header p { color: var(--muted); font-size: 0.95rem; margin-top: 4px; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 100%;
+      max-width: 760px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+
+    /* ── Input row ── */
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+    .input-row input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+      padding: 12px 16px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .input-row input:focus { border-color: var(--accent2); }
+    .input-row input::placeholder { color: var(--muted); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.92rem;
+      font-weight: 600;
+      padding: 12px 20px;
+      transition: opacity .2s, transform .1s, background .2s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--accent2); }
+
+    .btn-success {
+      background: var(--green);
+      color: #052e16;
+      font-weight: 700;
+    }
+    .btn-success:hover:not(:disabled) { filter: brightness(1.1); }
+
+    .btn-secondary {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover:not(:disabled) { border-color: var(--purple); color: #fff; }
+
+    .btn-zip {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #fff;
+      font-weight: 700;
+    }
+    .btn-zip:hover:not(:disabled) { filter: brightness(1.1); }
+
+    /* ── Loader ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    .loading .spinner { display: inline-block; }
+    .loading .btn-icon { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error / Status ── */
+    .alert {
+      border-radius: 8px;
+      font-size: 0.88rem;
+      margin-top: 14px;
+      padding: 10px 14px;
+    }
+    .alert-error { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.4); color: #fca5a5; }
+    .alert-info  { background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.4); color: #a5b4fc; }
+
+    /* ── Video / Playlist Preview ── */
+    #preview { display: none; }
+
+    .video-meta {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .video-meta img {
+      width: 140px;
+      min-width: 140px;
+      border-radius: 8px;
+      object-fit: cover;
+      aspect-ratio: 16/9;
+      background: var(--surface2);
+    }
+    .video-meta .info { flex: 1; }
+    .video-meta h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .video-meta .meta-row {
+      color: var(--muted);
+      font-size: 0.82rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ── Banners ── */
+    .music-banner, .playlist-banner {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: .03em;
+      margin-bottom: 14px;
+      padding: 8px 14px;
+    }
+    .music-banner {
+      background: linear-gradient(90deg, rgba(255,0,128,.12), rgba(255,0,80,.05));
+      border: 1px solid rgba(255,0,128,.25);
+      color: #ff6eb0;
+    }
+    .playlist-banner {
+      background: linear-gradient(90deg, rgba(59,130,246,.15), rgba(99,102,241,.08));
+      border: 1px solid rgba(59,130,246,.3);
+      color: #93c5fd;
+    }
+    .music-banner.visible, .playlist-banner.visible { display: flex; }
+
+    .is-music .video-meta img {
+      aspect-ratio: 1/1;
+      border-radius: 10px;
+    }
+
+    .music-tags {
+      display: none;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .music-tags.visible { display: flex; }
+
+    .music-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--text);
+      font-size: 0.78rem;
+      padding: 4px 10px;
+    }
+    .music-tag .tag-icon { color: #ff6eb0; font-size: 0.85em; }
+    .music-tag .tag-label { color: var(--muted); margin-right: 2px; }
+
+    /* ── Formatos ── */
+    .section-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin: 20px 0 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .formats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 8px;
+    }
+
+    .fmt-btn {
+      background: var(--surface2);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      cursor: pointer;
+      padding: 10px 8px;
+      text-align: center;
+      transition: border-color .15s, background .15s;
+    }
+    .fmt-btn:hover { border-color: var(--accent2); }
+    .fmt-btn.selected {
+      border-color: var(--accent);
+      background: rgba(255,0,0,.12);
+    }
+    .fmt-btn.fmt-audio {
+      border-color: #6366f1;
+    }
+    .fmt-btn.fmt-audio:hover { border-color: #818cf8; }
+    .fmt-btn.fmt-audio.selected {
+      border-color: #818cf8;
+      background: rgba(99,102,241,.18);
+    }
+    .fmt-btn .fmt-label {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .fmt-btn .fmt-sub {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .fmt-btn .fmt-size {
+      font-size: 0.75rem;
+      color: var(--green);
+      margin-top: 3px;
+    }
+
+    /* ── Playlist Items List ── */
+    #playlist-section {
+      display: none;
+      margin-top: 20px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+    .pl-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .pl-actions-top {
+      display: flex;
+      gap: 8px;
+      font-size: 0.8rem;
+    }
+    .pl-actions-top button {
+      background: none;
+      border: none;
+      color: var(--purple);
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: underline;
+    }
+    .pl-list {
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      padding: 6px;
+    }
+    .pl-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 0.86rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .pl-item:last-child { border-bottom: none; }
+    .pl-item:hover { background: rgba(255,255,255,0.03); }
+    .pl-item input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: var(--green);
+    }
+    .pl-item-idx {
+      color: var(--muted);
+      font-size: 0.75rem;
+      min-width: 22px;
+    }
+    .pl-item-title {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pl-item-dur {
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    /* ── Action Buttons Container ── */
+    .download-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .playlist-buttons {
+      display: none;
+      gap: 10px;
+      width: 100%;
+    }
+    .playlist-buttons .btn {
+      flex: 1;
+      justify-content: center;
+      padding: 14px;
+      font-size: 0.95rem;
+      border-radius: 10px;
+    }
+
+    #single-download-btn {
+      width: 100%;
+      justify-content: center;
+      padding: 14px;
+      font-size: 1rem;
+      border-radius: 10px;
+    }
+
+    /* ── Progress bar ── */
+    #progress-wrap { display: none; margin-top: 16px; }
+    .progress-bar-bg {
+      background: var(--surface2);
+      border-radius: 999px;
+      height: 10px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      background: linear-gradient(90deg, var(--green), #38bdf8);
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      transition: width .3s;
+    }
+    #progress-text {
+      font-size: 0.85rem;
+      color: var(--text);
+      margin-top: 8px;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    /* ── Footer ── */
+    footer {
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-top: 32px;
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 600px) {
+      .video-meta { flex-direction: column; }
+      .video-meta img { width: 100%; }
+      .input-row { flex-direction: column; }
+      .playlist-buttons { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" rx="12" fill="#FF0000"/>
+      <path d="M38.5 17.5C38.5 17.5 38.1 15.1 37 14C35.7 12.6 34.2 12.6 33.5 12.5C29.1 12.2 23 12.2 23 12.2H22.9C22.9 12.2 16.9 12.2 12.5 12.5C11.8 12.6 10.3 12.6 9 14C7.9 15.1 7.5 17.5 7.5 17.5S7 20.3 7 23.1V25.7C7 28.5 7.5 31.3 7.5 31.3S7.9 33.7 9 34.8C10.3 36.2 12.1 36.1 12.9 36.3C15.6 36.5 23 36.6 23 36.6C23 36.6 29.1 36.6 33.5 36.3C34.2 36.2 35.7 36.2 37 34.8C38.1 33.7 38.5 31.3 38.5 31.3S39 28.5 39 25.7V23.1C39 20.3 38.5 17.5 38.5 17.5ZM20.2 29.1V18.6L29.8 23.9L20.2 29.1Z" fill="white"/>
+    </svg>
+    <h1>YouTube & Playlist Downloader</h1>
+  </div>
+  <p>Baixe vídeos, músicas e playlists inteiras (separadas ou em ZIP) com metadados e capas oficiais</p>
+  <div style="margin-top:12px; display:inline-flex; align-items:center; gap:8px; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); border-radius:999px; padding:6px 14px; font-size:0.82rem; color:#86efac;">
+    <span style="width:8px; height:8px; background:var(--green); border-radius:50%; display:inline-block;"></span>
+    <span>Acesse no celular (mesmo Wi-Fi): <strong>http://192.168.3.14:5000</strong></span>
+  </div>
+</header>
+
+<!-- Search card -->
+<div class="card">
+  <div class="input-row">
+    <input
+      type="url"
+      id="url-input"
+      placeholder="Cole o link de um vídeo, música ou playlist do YouTube..."
+      autocomplete="off"
+    />
+    <button class="btn btn-primary" id="search-btn" onclick="fetchInfo()">
+      <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <div class="spinner"></div>
+      Buscar
+    </button>
+  </div>
+  <div id="search-error"></div>
+</div>
+
+<!-- Preview + download card -->
+<div class="card" id="preview">
+
+  <!-- Banners -->
+  <div class="music-banner" id="music-banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+    YouTube Music detectado
+  </div>
+  <div class="playlist-banner" id="playlist-banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    <span id="playlist-banner-text">Playlist detectada</span>
+  </div>
+
+  <!-- Thumbnail + metadata -->
+  <div class="video-meta" id="video-meta-row">
+    <img id="thumb" src="" alt="thumbnail" />
+    <div class="info">
+      <h2 id="vid-title"></h2>
+      <div class="meta-row">
+        <span class="meta-badge" id="vid-uploader"></span>
+        <span class="meta-badge" id="vid-duration"></span>
+        <span class="meta-badge" id="vid-views"></span>
+      </div>
+      <div class="music-tags" id="music-tags"></div>
+    </div>
+  </div>
+
+  <!-- Formatos disponíveis -->
+  <div class="section-label">
+    <span>Escolha a qualidade</span>
+    <span id="selected-fmt-indicator" style="color:var(--green); font-size:0.75rem;"></span>
+  </div>
+  <div class="formats-grid" id="formats-grid"></div>
+
+  <!-- Playlist Tracks Selection Section -->
+  <div id="playlist-section">
+    <div class="pl-header">
+      <span class="section-label" style="margin:0;">Faixas da Playlist (<span id="pl-selected-count">0</span> selecionadas)</span>
+      <div class="pl-actions-top">
+        <button type="button" onclick="toggleSelectAll(true)">Marcar Todas</button>
+        <span>•</span>
+        <button type="button" onclick="toggleSelectAll(false)">Desmarcar</button>
+      </div>
+    </div>
+    <div class="pl-list" id="pl-list"></div>
+  </div>
+
+  <!-- Download Actions -->
+  <div class="download-actions">
+    <!-- Botão para item individual -->
+    <button class="btn btn-success" id="single-download-btn" onclick="startSingleDownload()" disabled>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Baixar Vídeo
+    </button>
+
+    <!-- Botões para Playlist -->
+    <div class="playlist-buttons" id="playlist-buttons">
+      <button class="btn btn-zip" id="btn-dl-zip" onclick="startPlaylistZipDownload()" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        Baixar Todas Juntas (.ZIP)
+      </button>
+      <button class="btn btn-secondary" id="btn-dl-separate" onclick="startPlaylistSeparateDownload()" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Baixar Todas Separadas
+      </button>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div id="progress-wrap">
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progress-bar"></div>
+    </div>
+    <div id="progress-text">Preparando download...</div>
+  </div>
+
+  <div id="dl-error"></div>
+</div>
+
+<footer>
+  ⚠️ Use somente para vídeos e músicas com direitos de download permitidos.<br>
+  Powered by <strong>yt-dlp</strong> + <strong>FFmpeg</strong> + <strong>iTunes</strong> + <strong>MusicBrainz</strong>
+</footer>
+
+<script>
+  let currentUrl = '';
+  let selectedFormat = null;
+  let currentData = null;
+  let isDownloading = false;
+
+  // ── Buscar informações ──────────────────────────────────────
+  async function fetchInfo() {
+    const input = document.getElementById('url-input');
+    const url = input.value.trim();
+    if (!url) return showError('search-error', 'Cole um link do YouTube ou YouTube Music primeiro.');
+
+    currentUrl = url;
+    setLoading('search-btn', true);
+    clearError('search-error');
+    document.getElementById('preview').style.display = 'none';
+
+    try {
+      const res = await fetch('/api/info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Erro ao buscar dados');
+      currentData = data;
+      renderPreview(data);
+    } catch (err) {
+      showError('search-error', err.message);
+    } finally {
+      setLoading('search-btn', false);
+    }
+  }
+
+  // ── Renderizar preview ──────────────────────────────────────
+  function renderPreview(data) {
+    document.getElementById('thumb').src = data.thumbnail || '';
+    document.getElementById('vid-title').textContent = data.title;
+    document.getElementById('vid-uploader').textContent = '👤 ' + (data.uploader || '—');
+    document.getElementById('selected-fmt-indicator').textContent = '';
+
+    const bannerMusic = document.getElementById('music-banner');
+    const bannerPl = document.getElementById('playlist-banner');
+    const plSection = document.getElementById('playlist-section');
+    const tagsEl = document.getElementById('music-tags');
+    const metaRow = document.getElementById('video-meta-row');
+    const singleBtn = document.getElementById('single-download-btn');
+    const plBtns = document.getElementById('playlist-buttons');
+
+    if (data.is_playlist) {
+      // Configuração para Playlist
+      bannerPl.classList.add('visible');
+      document.getElementById('playlist-banner-text').textContent = `Playlist (${data.entry_count} faixas detectadas)`;
+      bannerMusic.classList.remove('visible');
+      metaRow.classList.remove('is-music');
+      tagsEl.classList.remove('visible');
+      tagsEl.innerHTML = '';
+
+      document.getElementById('vid-duration').textContent = `📁 ${data.entry_count} itens`;
+      document.getElementById('vid-views').textContent = '';
+
+      plSection.style.display = 'block';
+      singleBtn.style.display = 'none';
+      plBtns.style.display = 'flex';
+
+      renderPlaylistEntries(data.entries);
+    } else {
+      // Configuração para Vídeo/Música Individual
+      bannerPl.classList.remove('visible');
+      plSection.style.display = 'none';
+      singleBtn.style.display = 'inline-flex';
+      plBtns.style.display = 'none';
+
+      document.getElementById('vid-duration').textContent = '⏱ ' + formatDuration(data.duration);
+      document.getElementById('vid-views').textContent = '👁 ' + formatViews(data.view_count);
+
+      if (data.is_music) {
+        bannerMusic.classList.add('visible');
+        metaRow.classList.add('is-music');
+        const tags = [
+          { icon: '🎤', label: 'Artista',  value: data.artist },
+          { icon: '💿', label: 'Álbum',    value: data.album },
+          { icon: '📅', label: 'Ano',      value: data.release_year },
+          { icon: '🎵', label: 'Gênero',   value: data.genre },
+        ].filter(t => t.value);
+
+        tagsEl.innerHTML = tags.map(t => `
+          <span class="music-tag">
+            <span class="tag-icon">${t.icon}</span>
+            <span class="tag-label">${t.label}:</span>
+            <strong>${t.value}</strong>
+          </span>
+        `).join('');
+        tagsEl.classList.toggle('visible', tags.length > 0);
+      } else {
+        bannerMusic.classList.remove('visible');
+        metaRow.classList.remove('is-music');
+        tagsEl.classList.remove('visible');
+        tagsEl.innerHTML = '';
+      }
+    }
+
+    // Renderizar formatos
+    const grid = document.getElementById('formats-grid');
+    grid.innerHTML = '';
+    selectedFormat = null;
+    updateActionButtonsState();
+
+    data.formats.forEach((fmt, index) => {
+      const btn = document.createElement('div');
+      btn.className = 'fmt-btn' + (fmt.audio_only ? ' fmt-audio' : '');
+      btn.dataset.fmtId = fmt.format_id;
+      btn.dataset.audioOnly = fmt.audio_only ? '1' : '0';
+
+      const sizeStr = fmt.filesize ? formatSize(fmt.filesize) : '';
+      if (fmt.audio_only) {
+        btn.innerHTML = `
+          <div class="fmt-label">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            ${fmt.label}
+          </div>
+          <div class="fmt-sub">Áudio oficial</div>
+          ${sizeStr ? `<div class="fmt-size">${sizeStr}</div>` : ''}
+        `;
+      } else {
+        btn.innerHTML = `
+          <div class="fmt-label">${fmt.label}</div>
+          <div class="fmt-sub">${fmt.ext.toUpperCase()}</div>
+          ${sizeStr ? `<div class="fmt-size">${sizeStr}</div>` : ''}
+        `;
+      }
+      btn.addEventListener('click', () => selectFormat(btn, fmt));
+      grid.appendChild(btn);
+
+      // Auto-selecionar MP3 320kbps por padrão se for música ou playlist
+      if (index === 0) {
+        selectFormat(btn, fmt);
+      }
+    });
+
+    document.getElementById('preview').style.display = 'block';
+    document.getElementById('dl-error').innerHTML = '';
+    document.getElementById('progress-wrap').style.display = 'none';
+  }
+
+  // ── Renderizar lista de itens da playlist ──────────────────
+  function renderPlaylistEntries(entries) {
+    const list = document.getElementById('pl-list');
+    list.innerHTML = '';
+    entries.forEach(e => {
+      const item = document.createElement('div');
+      item.className = 'pl-item';
+      item.innerHTML = `
+        <input type="checkbox" class="pl-chk" checked data-url="${e.url}" data-title="${encodeURIComponent(e.title)}" onchange="updateSelectedCount()">
+        <span class="pl-item-idx">#${e.index}</span>
+        <span class="pl-item-title" title="${e.title}">${e.title}</span>
+        <span class="pl-item-dur">${e.duration ? formatDuration(e.duration) : ''}</span>
+      `;
+      list.appendChild(item);
+    });
+    updateSelectedCount();
+  }
+
+  function toggleSelectAll(checked) {
+    document.querySelectorAll('.pl-chk').forEach(c => c.checked = checked);
+    updateSelectedCount();
+  }
+
+  function updateSelectedCount() {
+    const checked = document.querySelectorAll('.pl-chk:checked');
+    document.getElementById('pl-selected-count').textContent = checked.length;
+    updateActionButtonsState();
+  }
+
+  function getSelectedPlaylistItems() {
+    const checked = document.querySelectorAll('.pl-chk:checked');
+    return Array.from(checked).map(c => ({
+      url: c.dataset.url,
+      title: decodeURIComponent(c.dataset.title),
+    }));
+  }
+
+  // ── Selecionar formato ──────────────────────────────────────
+  function selectFormat(el, fmt) {
+    document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedFormat = fmt;
+    document.getElementById('selected-fmt-indicator').textContent = `Selecionado: ${fmt.label}`;
+
+    const singleBtn = document.getElementById('single-download-btn');
+    singleBtn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Baixar ${fmt.label}
+    `;
+
+    updateActionButtonsState();
+  }
+
+  function updateActionButtonsState() {
+    const singleBtn = document.getElementById('single-download-btn');
+    const btnZip = document.getElementById('btn-dl-zip');
+    const btnSep = document.getElementById('btn-dl-separate');
+
+    if (!selectedFormat || isDownloading) {
+      singleBtn.disabled = true;
+      btnZip.disabled = true;
+      btnSep.disabled = true;
+      return;
+    }
+
+    singleBtn.disabled = false;
+    const selectedCount = document.querySelectorAll('.pl-chk:checked').length;
+    const hasItems = selectedCount > 0;
+    btnZip.disabled = !hasItems;
+    btnSep.disabled = !hasItems;
+  }
+
+  // ── Download Individual ─────────────────────────────────────
+  async function startSingleDownload() {
+    if (!selectedFormat || isDownloading) return;
+    isDownloading = true;
+    updateActionButtonsState();
+
+    const progressWrap = document.getElementById('progress-wrap');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+
+    clearError('dl-error');
+    progressWrap.style.display = 'block';
+    progressBar.style.width = '10%';
+    progressText.textContent = 'Buscando metadados e processando mídia...';
+
+    let fake = 10;
+    const ticker = setInterval(() => {
+      fake = Math.min(fake + Math.random() * 5, 88);
+      progressBar.style.width = fake + '%';
+    }, 600);
+
+    try {
+      const res = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: currentUrl,
+          format_id: selectedFormat.format_id,
+          audio_only: !!selectedFormat.audio_only,
+          mp3_quality: selectedFormat.mp3_quality || '192',
+        }),
+      });
+
+      clearInterval(ticker);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Erro no download');
+      }
+
+      progressBar.style.width = '100%';
+      progressText.textContent = '✅ Concluído! Enviando arquivo...';
+
+      const blob = await res.blob();
+      triggerBlobDownload(blob, res.headers.get('Content-Disposition'), (currentData?.title || 'video') + '.' + (selectedFormat.ext || 'mp4'));
+      progressText.textContent = '✅ Download concluído!';
+    } catch (err) {
+      clearInterval(ticker);
+      showError('dl-error', err.message);
+      progressWrap.style.display = 'none';
+    } finally {
+      isDownloading = false;
+      updateActionButtonsState();
+    }
+  }
+
+  // ── Download Playlist em Arquivo ZIP ────────────────────────
+  async function startPlaylistZipDownload() {
+    const items = getSelectedPlaylistItems();
+    if (!items.length || !selectedFormat || isDownloading) return;
+
+    isDownloading = true;
+    updateActionButtonsState();
+
+    const progressWrap = document.getElementById('progress-wrap');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+
+    clearError('dl-error');
+    progressWrap.style.display = 'block';
+    progressBar.style.width = '5%';
+    progressText.textContent = `Iniciando download de ${items.length} faixas com metadados e comprimindo em ZIP...`;
+
+    let fake = 5;
+    const ticker = setInterval(() => {
+      fake = Math.min(fake + Math.random() * 2, 92);
+      progressBar.style.width = fake + '%';
+      progressText.textContent = `Baixando faixas, aplicando capas e gerando ZIP... (~${Math.round(fake)}%)`;
+    }, 1500);
+
+    try {
+      const res = await fetch('/api/download_playlist_zip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: items,
+          format_id: selectedFormat.format_id,
+          audio_only: !!selectedFormat.audio_only,
+          mp3_quality: selectedFormat.mp3_quality || '320',
+          playlist_title: currentData?.title || 'Playlist',
+        }),
+      });
+
+      clearInterval(ticker);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Erro ao gerar ZIP da playlist');
+      }
+
+      progressBar.style.width = '100%';
+      progressText.textContent = '✅ ZIP gerado com sucesso! Baixando arquivo...';
+
+      const blob = await res.blob();
+      triggerBlobDownload(blob, res.headers.get('Content-Disposition'), (currentData?.title || 'Playlist') + '.zip');
+      progressText.textContent = '✅ Download da playlist compactada concluído!';
+    } catch (err) {
+      clearInterval(ticker);
+      showError('dl-error', err.message);
+      progressWrap.style.display = 'none';
+    } finally {
+      isDownloading = false;
+      updateActionButtonsState();
+    }
+  }
+
+  // ── Download Playlist com Arquivos Separados ────────────────
+  async function startPlaylistSeparateDownload() {
+    const items = getSelectedPlaylistItems();
+    if (!items.length || !selectedFormat || isDownloading) return;
+
+    isDownloading = true;
+    updateActionButtonsState();
+
+    const progressWrap = document.getElementById('progress-wrap');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+
+    clearError('dl-error');
+    progressWrap.style.display = 'block';
+
+    let successCount = 0;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const percent = Math.round(((i) / items.length) * 100);
+      progressBar.style.width = `${percent}%`;
+      progressText.textContent = `[${i + 1}/${items.length}] Baixando: ${item.title}...`;
+
+      try {
+        const res = await fetch('/api/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: item.url,
+            format_id: selectedFormat.format_id,
+            audio_only: !!selectedFormat.audio_only,
+            mp3_quality: selectedFormat.mp3_quality || '320',
+          }),
+        });
+
+        if (res.ok) {
+          const blob = await res.blob();
+          triggerBlobDownload(blob, res.headers.get('Content-Disposition'), `${i + 1} - ${item.title}.${selectedFormat.ext || 'mp3'}`);
+          successCount++;
+        }
+      } catch (e) {
+        console.error(`Erro ao baixar item ${item.title}:`, e);
+      }
+      // Pequeno intervalo entre downloads sequenciais para o browser processar
+      await new Promise(r => setTimeout(r, 600));
+    }
+
+    progressBar.style.width = '100%';
+    progressText.textContent = `✅ Concluído! ${successCount} de ${items.length} faixas baixadas separadamente.`;
+    isDownloading = false;
+    updateActionButtonsState();
+  }
+
+  function triggerBlobDownload(blob, disposition, defaultName) {
+    let filename = defaultName;
+    if (disposition) {
+      const match = disposition.match(/filename\*?=(?:UTF-8'')?(.+)/i);
+      if (match) {
+        filename = decodeURIComponent(match[1].replace(/["']/g, ''));
+      }
+    }
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  }
+
+  // ── Enter key ───────────────────────────────────────────────
+  document.getElementById('url-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') fetchInfo();
+  });
+
+  // ── Helpers ─────────────────────────────────────────────────
+  function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    btn.classList.toggle('loading', loading);
+    btn.disabled = loading;
+  }
+  function showError(id, msg) {
+    document.getElementById(id).innerHTML = `<div class="alert alert-error">⚠️ ${msg}</div>`;
+  }
+  function clearError(id) {
+    document.getElementById(id).innerHTML = '';
+  }
+  function formatDuration(s) {
+    if (!s) return '—';
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return h > 0
+      ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
+      : `${m}:${String(sec).padStart(2,'0')}`;
+  }
+  function formatViews(n) {
+    if (!n) return '—';
+    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B views';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M views';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K views';
+    return n + ' views';
+  }
+  function formatSize(bytes) {
+    if (!bytes) return '';
+    if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + ' GB';
+    if (bytes >= 1e6) return (bytes / 1e6).toFixed(1) + ' MB';
+    return (bytes / 1e3).toFixed(0) + ' KB';
+  }
+
+  // ── Registrar Service Worker (PWA) ─────────────────────────
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => {
+        console.log('SW registration failed:', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>
