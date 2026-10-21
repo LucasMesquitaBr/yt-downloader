@@ -636,7 +636,7 @@ def _download_single_item(url: str, target_dir: Path, format_id: str, audio_only
     if audio_only:
         ydl_opts = {
             **common_ydl_params,
-            "format": "bestaudio/best",
+            "format": "bestaudio/ba/b/best",
             "outtmpl": output_template,
             "postprocessors": [
                 {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": mp3_quality},
