@@ -1,7 +1,10 @@
 services:
   - type: web
     name: yt-downloader
-    env: docker
+    runtime: docker
     plan: free
     region: ohio
     autoDeploy: true
+    envVars:
+      - key: PORT
+        value: "5000"
