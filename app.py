@@ -616,7 +616,7 @@ def _download_single_item(url: str, target_dir: Path, format_id: str, audio_only
 
     common_extractor_args = {
         "youtube": {
-            "player_client": ["android", "web"]
+            "player_client": ["android", "tv_embedded"]
         }
     }
 
@@ -862,7 +862,7 @@ def resolve_spotify_to_youtube(title, artist):
         "quiet": True,
         "extract_flat": True,
         "skip_download": True,
-        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+        "extractor_args": {"youtube": {"player_client": ["android", "tv_embedded"]}},
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         for q in queries:
@@ -1016,7 +1016,7 @@ def get_info():
             "no_warnings": True,
             "skip_download": True,
             "extract_flat": "in_playlist",
-            "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+            "extractor_args": {"youtube": {"player_client": ["android", "tv_embedded"]}},
         }) as ydl:
             info = ydl.extract_info(url, download=False)
 

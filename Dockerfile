@@ -1,8 +1,8 @@
 FROM python:3.11-slim
 
-# Instala ffmpeg e dependencias de midia
+# Instala ffmpeg e dependencias de midia (incluindo nodejs para desafio JS do yt-dlp)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg curl && \
+    apt-get install -y --no-install-recommends ffmpeg curl nodejs && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
