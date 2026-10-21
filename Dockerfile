@@ -10,11 +10,11 @@ WORKDIR /app
 
 # Instala dependencias Python
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt gunicorn
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia os arquivos da aplicacao
-COPY app.py .
-COPY index.html .
+COPY app.py index.html manifest.json sw.js ./
+COPY static/ ./static/
 
 EXPOSE 5000
 

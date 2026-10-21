@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.apk
+*.idsig
+spotify_token_cache.json
+.DS_Store
+Thumbs.db

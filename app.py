@@ -5,6 +5,7 @@ Metadados: yt-dlp + iTunes API + MusicBrainz API
 
 import json as _json
 import shutil
+import ssl
 import tempfile
 import time
 import urllib.parse
@@ -613,12 +614,19 @@ def _download_single_item(url: str, target_dir: Path, format_id: str, audio_only
     output_template = str(target_dir / "%(title)s.%(ext)s")
     common_pp = [{"key": "FFmpegMetadata", "add_metadata": True}]
 
+    common_extractor_args = {
+        "youtube": {
+            "player_client": ["android", "web"]
+        }
+    }
+
     if audio_only:
         ydl_opts = {
             "format": "bestaudio/best",
             "outtmpl": output_template,
             "quiet": True,
             "ffmpeg_location": FFMPEG_PATH,
+            "extractor_args": common_extractor_args,
             "postprocessors": [
                 {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": mp3_quality},
                 *common_pp,
@@ -631,6 +639,7 @@ def _download_single_item(url: str, target_dir: Path, format_id: str, audio_only
             "quiet": True,
             "merge_output_format": "mp4",
             "ffmpeg_location": FFMPEG_PATH,
+            "extractor_args": common_extractor_args,
             "postprocessors": common_pp,
         }
 
@@ -667,7 +676,7 @@ def _download_single_item(url: str, target_dir: Path, format_id: str, audio_only
 
 @app.route("/")
 def index():
-    return render_template_string(HTML)
+    return send_file(Path(__file__).parent / "index.html")
 
 
 @app.route("/manifest.json")
@@ -685,12 +694,298 @@ def static_files(filename):
     return send_file(Path(__file__).parent / "static" / filename)
 
 
+@app.route("/app.apk")
+def download_apk():
+    apk_file = Path(__file__).parent / "YouTubeDownloader.apk"
+    if apk_file.exists():
+        return send_file(apk_file, as_attachment=True, download_name="YouTubeDownloader.apk", mimetype="application/vnd.android.package-archive")
+    return jsonify({"error": "APK não encontrado"}), 404
+
+
+TOKEN_FILE = Path(__file__).parent / "spotify_token_cache.json"
+
+def get_spotify_tokens():
+    if TOKEN_FILE.exists():
+        try:
+            with open(TOKEN_FILE, encoding="utf-8") as f:
+                data = _json.load(f)
+                if data.get("expires_at", 0) > time.time() + 300:
+                    return data
+        except Exception as e:
+            print("[Spotify Cache Error]:", e)
+
+    print("[Spotify] Obtendo novos tokens do Web Player...")
+    tokens = {}
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            
+            def handle_response(response):
+                if "api/token" in response.url:
+                    try:
+                        res_json = response.json()
+                        if isinstance(res_json, dict) and "accessToken" in res_json:
+                            tokens["access_token"] = res_json["accessToken"]
+                            exp_ms = res_json.get("accessTokenExpirationTimestampMs", 0)
+                            tokens["expires_at"] = (exp_ms / 1000) if exp_ms else (time.time() + 3600)
+                    except:
+                        pass
+                elif "clienttoken.spotify.com" in response.url:
+                    try:
+                        res_json = response.json()
+                        tokens["client_token"] = res_json.get("granted_token", {}).get("token")
+                    except:
+                        pass
+                        
+            page.on("response", handle_response)
+            page.goto("https://open.spotify.com", wait_until="networkidle", timeout=20000)
+            browser.close()
+
+        if tokens.get("access_token") and tokens.get("client_token"):
+            with open(TOKEN_FILE, "w", encoding="utf-8") as f:
+                _json.dump(tokens, f, indent=2)
+            print("[Spotify] Novos tokens salvos com sucesso!")
+            return tokens
+    except Exception as e:
+        print("[Spotify Token Error]:", e)
+    return tokens
+
+
+def search_spotify(query, limit=10):
+    tokens = get_spotify_tokens()
+    if not tokens or not tokens.get("access_token"):
+        return []
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json;charset=UTF-8",
+        "Origin": "https://open.spotify.com",
+        "Referer": "https://open.spotify.com/",
+        "App-Platform": "WebPlayer",
+        "Authorization": f"Bearer {tokens['access_token']}",
+        "Client-Token": tokens.get("client_token", ""),
+        "spotify-app-version": "1.3.7.1581.gc64768c11c44",
+        "sec-ch-ua-platform": "\"Windows\"",
+    }
+
+    payload = {
+        "variables": {
+            "searchTerm": query,
+            "offset": 0,
+            "limit": limit,
+            "numberOfTopResults": 5,
+            "includeAudiobooks": False,
+            "includeArtistHasConcertsField": False,
+            "includePreReleases": False,
+            "includeAlbumPreReleases": False,
+            "includeAuthors": False,
+            "includeEpisodeContentRatingsV2": False,
+            "isPrefix": None,
+            "sectionFilters": ["GENERIC"]
+        },
+        "operationName": "searchDesktop",
+        "extensions": {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "eef7cc54888d91bdd6802623477873caa3948ae173a0c34fd86827b267e94c03"
+            }
+        }
+    }
+
+    ctx = ssl._create_unverified_context()
+    req = urllib.request.Request(
+        "https://api-partner.spotify.com/pathfinder/v2/query",
+        data=_json.dumps(payload).encode("utf-8"),
+        headers=headers
+    )
+
+    with urllib.request.urlopen(req, timeout=10, context=ctx) as resp:
+        data = _json.loads(resp.read().decode("utf-8"))
+        items = data.get("data", {}).get("searchV2", {}).get("tracksV2", {}).get("items", [])
+        
+        results = []
+        for t in items:
+            track = t.get("item", {}).get("data", {})
+            if not track:
+                continue
+            name = track.get("name")
+            artists = [a.get("profile", {}).get("name") for a in track.get("artists", {}).get("items", []) if a.get("profile", {}).get("name")]
+            artist_str = ", ".join(artists) if artists else "Artista Desconhecido"
+            album = track.get("albumOfTrack", {}).get("name") or ""
+            dur_ms = track.get("duration", {}).get("totalMilliseconds") or 0
+            
+            cover_sources = track.get("albumOfTrack", {}).get("coverArt", {}).get("sources", [])
+            cover_url = cover_sources[0].get("url") if cover_sources else ""
+            
+            uri = track.get("uri") or ""
+            track_id = uri.split(":")[-1] if uri else ""
+            spotify_url = f"https://open.spotify.com/track/{track_id}" if track_id else ""
+            
+            results.append({
+                "id": track_id,
+                "title": name,
+                "artist": artist_str,
+                "uploader": artist_str,
+                "album": album,
+                "duration": dur_ms // 1000,
+                "thumbnail": cover_url,
+                "url": spotify_url,
+                "source": "Spotify"
+            })
+            
+        return results
+
+
+def resolve_spotify_to_youtube(title, artist):
+    query = f"{artist} - {title} audio" if artist else f"{title} audio"
+    ydl_opts = {
+        "quiet": True,
+        "extract_flat": True,
+        "skip_download": True,
+        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        res = ydl.extract_info(f"ytsearch1:{query}", download=False)
+        if res and res.get("entries"):
+            e = res["entries"][0]
+            v_id = e.get("id")
+            return f"https://www.youtube.com/watch?v={v_id}", e.get("title")
+    return None, None
+
+
+def _apply_spotify_metadata_to_mp3(filepath, title, artist, album, cover_url):
+    try:
+        from mutagen.id3 import ID3, TIT2, TPE1, TALB, APIC
+        from mutagen.mp3 import MP3
+
+        audio = MP3(filepath)
+        if audio.tags is None:
+            audio.add_tags()
+        
+        if title:
+            audio.tags["TIT2"] = TIT2(encoding=3, text=title)
+        if artist:
+            audio.tags["TPE1"] = TPE1(encoding=3, text=artist)
+        if album:
+            audio.tags["TALB"] = TALB(encoding=3, text=album)
+        
+        if cover_url:
+            try:
+                ctx = ssl._create_unverified_context()
+                req = urllib.request.Request(cover_url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=10, context=ctx) as r:
+                    img_data = r.read()
+                    audio.tags["APIC"] = APIC(
+                        encoding=3,
+                        mime="image/jpeg",
+                        type=3,
+                        desc="Cover",
+                        data=img_data
+                    )
+            except Exception as e_cover:
+                print(f"[Spotify Cover Error]: {e_cover}")
+
+        audio.save()
+        print(f"[Spotify] Tags aplicadas com sucesso em: {filepath.name}")
+    except Exception as e:
+        print(f"[Spotify Metadata Error]: {e}")
+
+
+@app.route("/api/search", methods=["POST"])
+def search_tracks():
+    """Pesquisa músicas no Spotify pelo nome (com fallback para YouTube Music)."""
+    data = request.get_json(force=True)
+    query = (data.get("query") or "").strip()
+    if not query:
+        return jsonify({"error": "Digite o nome da música ou artista"}), 400
+
+    limit = int(data.get("limit", 12))
+    limit = max(1, min(limit, 25))
+
+    # 1. Busca direta prioritária no Spotify
+    try:
+        spotify_results = search_spotify(query, limit=limit)
+        if spotify_results:
+            return jsonify({"success": True, "results": spotify_results, "source": "Spotify"})
+    except Exception as e_spot:
+        print(f"[Search Spotify Error]: {e_spot}")
+
+    # 2. Fallback YouTube Music caso o Spotify falhe
+    try:
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": True,
+            "skip_download": True,
+        }
+        music_url = f"https://music.youtube.com/search?q={urllib.parse.quote(query)}"
+        raw_entries = []
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                res = ydl.extract_info(music_url, download=False)
+                if res and res.get("entries"):
+                    raw_entries = [
+                        e for e in res.get("entries", [])
+                        if e and e.get("title") and ("watch?v=" in (e.get("url") or "") or e.get("id"))
+                    ]
+        except Exception as e_music:
+            print(f"[Search] Aviso na busca YouTube Music: {e_music}")
+
+        if not raw_entries:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                res = ydl.extract_info(f"ytsearch{limit}:{query}", download=False)
+                raw_entries = res.get("entries", []) if res else []
+
+        results = []
+        for e in raw_entries[:limit]:
+            if not e:
+                continue
+            vid_id = e.get("id") or ""
+            title = e.get("title") or "Sem título"
+            uploader = e.get("uploader") or e.get("channel") or "YouTube Music"
+            duration = e.get("duration") or 0
+
+            thumb_url = ""
+            thumbnails = e.get("thumbnails") or []
+            if thumbnails:
+                thumb_url = thumbnails[-1].get("url") or ""
+            if not thumb_url and vid_id:
+                thumb_url = f"https://i.ytimg.com/vi/{vid_id}/mqdefault.jpg"
+
+            video_url = f"https://music.youtube.com/watch?v={vid_id}" if vid_id else (e.get("url") or "")
+
+            results.append({
+                "id": vid_id,
+                "title": title,
+                "uploader": uploader,
+                "duration": duration,
+                "thumbnail": thumb_url,
+                "url": video_url,
+                "source": "YouTube Music"
+            })
+
+        return jsonify({"success": True, "results": results, "source": "YouTube Music"})
+    except Exception as e:
+        return jsonify({"error": f"Falha na busca: {str(e)}"}), 500
+
+
 @app.route("/api/info", methods=["POST"])
 def get_info():
     data = request.get_json(force=True)
     url  = data.get("url", "").strip()
     if not url:
         return jsonify({"error": "URL inválida"}), 400
+
+    # Suporte para URLs do Spotify
+    if "open.spotify.com" in url or "spotify:" in url or data.get("source") == "Spotify":
+        track_title = data.get("title", "").strip()
+        track_artist = data.get("artist", "").strip()
+        yt_url, matched_title = resolve_spotify_to_youtube(track_title, track_artist)
+        if yt_url:
+            url = yt_url
 
     try:
         # Extrai info básica sem baixar vídeos
@@ -699,6 +994,7 @@ def get_info():
             "no_warnings": True,
             "skip_download": True,
             "extract_flat": "in_playlist",
+            "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
         }) as ydl:
             info = ydl.extract_info(url, download=False)
 
@@ -837,21 +1133,47 @@ def download():
     if not url or not format_id:
         return jsonify({"error": "Parâmetros inválidos"}), 400
 
-    # Cria diretório temporário isolado para este download
     job_id = uuid.uuid4().hex[:10]
     job_dir = DOWNLOAD_DIR / f"job_{job_id}"
     job_dir.mkdir(parents=True, exist_ok=True)
 
+    # Tratamento dedicado para faixas originadas do Spotify
+    if "open.spotify.com" in url or "spotify:" in url or data.get("source") == "Spotify":
+        track_title = data.get("title", "").strip()
+        track_artist = data.get("artist", "").strip()
+        track_album = data.get("album", "").strip()
+        cover_url = data.get("thumbnail", "").strip()
+
+        yt_url, matched_title = resolve_spotify_to_youtube(track_title, track_artist)
+        if not yt_url:
+            return jsonify({"error": f"Não foi possível localizar o áudio correspondente para: {track_title}"}), 404
+
+        try:
+            filepath = _download_single_item(yt_url, job_dir, format_id, audio_only=True, mp3_quality=mp3_quality)
+            _apply_spotify_metadata_to_mp3(filepath, track_title, track_artist, track_album, cover_url)
+
+            return jsonify({
+                "success": True,
+                "download_url": f"/api/get_file/job_{job_id}/{urllib.parse.quote(filepath.name)}",
+                "filename": filepath.name
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     try:
         filepath = _download_single_item(url, job_dir, format_id, audio_only, mp3_quality)
-        return send_file(filepath, as_attachment=True, download_name=filepath.name)
+        return jsonify({
+            "success": True,
+            "download_url": f"/api/get_file/job_{job_id}/{urllib.parse.quote(filepath.name)}",
+            "filename": filepath.name
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/download_playlist_zip", methods=["POST"])
 def download_playlist_zip():
-    """Baixa todas as faixas selecionadas da playlist e retorna tudo em um arquivo ZIP."""
+    """Baixa todas as faixas selecionadas da playlist e retorna URL direta do ZIP."""
     data        = request.get_json(force=True)
     items       = data.get("items", [])
     format_id   = data.get("format_id", "").strip()
@@ -876,7 +1198,6 @@ def download_playlist_zip():
             item_dir = files_dir / f"track_{idx}"
             try:
                 fp = _download_single_item(item_url, item_dir, format_id, audio_only, mp3_quality)
-                # Mover para files_dir com prefixo de número
                 safe_name = f"{idx:02d} - {fp.name}"
                 dest_path = files_dir / safe_name
                 shutil.move(str(fp), str(dest_path))
@@ -887,17 +1208,46 @@ def download_playlist_zip():
         if not downloaded_files:
             return jsonify({"error": "Nenhuma faixa pôde ser baixada com sucesso."}), 500
 
-        # Criação do ZIP
         safe_zip_title = re.sub(r'[\\/*?:"<>|]', "", playlist_name).strip() or "Playlist"
         zip_path = job_dir / f"{safe_zip_title}.zip"
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for f in downloaded_files:
                 zf.write(f, arcname=f.name)
 
-        return send_file(zip_path, as_attachment=True, download_name=zip_path.name)
+        return jsonify({
+            "success": True,
+            "download_url": f"/api/get_file/pl_zip_{job_id}/{urllib.parse.quote(zip_path.name)}",
+            "filename": zip_path.name
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/get_file/<job_folder>/<filename>")
+def get_file(job_folder, filename):
+    """Entrega o arquivo final diretamente via HTTP GET padrão (compatível com Android DownloadManager)."""
+    clean_filename = urllib.parse.unquote(filename)
+    folder = DOWNLOAD_DIR / job_folder
+
+    if not folder.exists():
+        if (DOWNLOAD_DIR / f"job_{job_folder}").exists():
+            folder = DOWNLOAD_DIR / f"job_{job_folder}"
+        elif (DOWNLOAD_DIR / f"pl_zip_{job_folder}").exists():
+            folder = DOWNLOAD_DIR / f"pl_zip_{job_folder}"
+
+    file_path = folder / clean_filename
+    
+    if not file_path.exists():
+        # Fallback: procura o primeiro arquivo na pasta
+        candidates = [p for p in folder.glob("*") if p.is_file()]
+        if candidates:
+            file_path = candidates[0]
+            clean_filename = file_path.name
+        else:
+            return jsonify({"error": "Arquivo expirado ou não encontrado"}), 404
+
+    return send_file(file_path, as_attachment=True, download_name=clean_filename)
 
 
 if __name__ == "__main__":

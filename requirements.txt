@@ -1,4 +1,4 @@
 flask>=3.0
-yt-dlp>=2024.1.1
+yt-dlp>=2025.1.1
 mutagen>=0.47.0
-
+gunicorn>=21.2.0

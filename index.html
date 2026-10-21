@@ -429,11 +429,192 @@
       line-height: 1.6;
     }
 
+    /* ── Search Mode Tabs ── */
+    .search-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .tab-btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .tab-btn:hover {
+      color: var(--text);
+      border-color: rgba(255,255,255,0.25);
+    }
+    .tab-btn.active {
+      background: rgba(255, 0, 0, 0.14);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .tab-btn#tab-search-name.active {
+      background: rgba(30, 215, 96, 0.15);
+      border-color: #1ed760;
+      color: #1ed760;
+    }
+    .tab-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* ── Search Results Card ── */
+    #search-results-card {
+      display: none;
+      margin-top: 20px;
+    }
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .results-count {
+      font-size: 0.82rem;
+      color: var(--green);
+      font-weight: 600;
+    }
+    .results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .result-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      transition: border-color .2s, background .2s;
+    }
+    .result-item:hover {
+      border-color: rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.04);
+    }
+    .result-thumb-wrap {
+      position: relative;
+      width: 100px;
+      height: 62px;
+      min-width: 100px;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #000;
+    }
+    .result-thumb-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .result-thumb-wrap .result-dur {
+      position: absolute;
+      bottom: 3px;
+      right: 3px;
+      background: rgba(0,0,0,0.85);
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #fff;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    .result-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .result-title {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    .result-meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .result-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .btn-quick-mp3 {
+      background: var(--green);
+      color: #052e16;
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: filter .15s;
+    }
+    .btn-quick-mp3:hover { filter: brightness(1.15); }
+    .btn-view-opts {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 8px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: border-color .15s;
+    }
+    .btn-view-opts:hover { border-color: var(--purple); color: #fff; }
+
+    /* ── Progress Card ── */
+    #global-progress-card {
+      display: none;
+      margin-top: 16px;
+    }
+
     @media (max-width: 600px) {
       .video-meta { flex-direction: column; }
       .video-meta img { width: 100%; }
       .input-row { flex-direction: column; }
       .playlist-buttons { flex-direction: column; }
+      .result-item {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .result-thumb-wrap {
+        width: 100%;
+        height: 130px;
+      }
+      .result-actions {
+        margin-top: 6px;
+      }
+      .result-actions button {
+        flex: 1;
+        justify-content: center;
+        padding: 10px;
+      }
     }
   </style>
 </head>
@@ -448,28 +629,58 @@
     <h1>YouTube & Playlist Downloader</h1>
   </div>
   <p>Baixe vídeos, músicas e playlists inteiras (separadas ou em ZIP) com metadados e capas oficiais</p>
-  <div style="margin-top:12px; display:inline-flex; align-items:center; gap:8px; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); border-radius:999px; padding:6px 14px; font-size:0.82rem; color:#86efac;">
-    <span style="width:8px; height:8px; background:var(--green); border-radius:50%; display:inline-block;"></span>
-    <span>Acesse no celular (mesmo Wi-Fi): <strong>http://192.168.3.14:5000</strong></span>
-  </div>
 </header>
 
 <!-- Search card -->
 <div class="card">
+  <!-- Search Mode Selector Tabs -->
+  <div class="search-tabs">
+    <button type="button" class="tab-btn active" id="tab-search-name" onclick="setSearchMode('name')">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.434-5.308-1.758-8.793-.963-.335.077-.67-.133-.746-.469-.077-.334.132-.67.467-.747 3.808-.87 7.076-.502 9.721 1.116.294.18.386.564.208.856zm1.224-2.72c-.226.367-.707.482-1.074.256-2.69-1.653-6.79-2.133-9.97-1.168-.413.125-.851-.108-.976-.52-.125-.413.108-.852.52-.977 3.633-1.103 8.147-.568 11.244 1.335.367.226.482.707.256 1.074zm.105-2.835C14.692 8.95 8.08 8.73 4.707 9.755c-.495.15-1.022-.132-1.173-.627-.15-.496.132-1.022.627-1.173 3.947-1.198 11.23-.943 15.115 1.363.445.264.59.84.325 1.285-.264.444-.84.59-1.285.326z"/></svg>
+      Spotify
+    </button>
+    <button type="button" class="tab-btn" id="tab-search-url" onclick="setSearchMode('url')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      Colar Link (URL)
+    </button>
+  </div>
+
   <div class="input-row">
     <input
-      type="url"
+      type="text"
       id="url-input"
-      placeholder="Cole o link de um vídeo, música ou playlist do YouTube..."
+      placeholder="Digite o nome da música ou artista (busca no Spotify)..."
       autocomplete="off"
     />
-    <button class="btn btn-primary" id="search-btn" onclick="fetchInfo()">
+    <button class="btn btn-primary" id="search-btn" onclick="handleSearch()">
       <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <div class="spinner"></div>
       Buscar
     </button>
   </div>
   <div id="search-error"></div>
+</div>
+
+<!-- Global Progress Card (shows for any download in progress) -->
+<div class="card" id="global-progress-card">
+  <div id="progress-wrap" style="display:block;">
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progress-bar"></div>
+    </div>
+    <div id="progress-text">Preparando download...</div>
+  </div>
+</div>
+
+<!-- Search Results Card -->
+<div class="card" id="search-results-card">
+  <div class="results-header">
+    <span class="section-label" style="margin:0; display:flex; align-items:center; gap:6px;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="#1ed760"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.434-5.308-1.758-8.793-.963-.335.077-.67-.133-.746-.469-.077-.334.132-.67.467-.747 3.808-.87 7.076-.502 9.721 1.116.294.18.386.564.208.856zm1.224-2.72c-.226.367-.707.482-1.074.256-2.69-1.653-6.79-2.133-9.97-1.168-.413.125-.851-.108-.976-.52-.125-.413.108-.852.52-.977 3.633-1.103 8.147-.568 11.244 1.335.367.226.482.707.256 1.074zm.105-2.835C14.692 8.95 8.08 8.73 4.707 9.755c-.495.15-1.022-.132-1.173-.627-.15-.496.132-1.022.627-1.173 3.947-1.198 11.23-.943 15.115 1.363.445.264.59.84.325 1.285-.264.444-.84.59-1.285.326z"/></svg>
+      Músicas no Spotify
+    </span>
+    <span class="results-count" id="results-count-badge"></span>
+  </div>
+  <div class="results-list" id="results-list"></div>
 </div>
 
 <!-- Preview + download card -->
@@ -540,20 +751,17 @@
     </div>
   </div>
 
-  <!-- Progress bar -->
-  <div id="progress-wrap">
-    <div class="progress-bar-bg">
-      <div class="progress-bar-fill" id="progress-bar"></div>
-    </div>
-    <div id="progress-text">Preparando download...</div>
-  </div>
-
   <div id="dl-error"></div>
 </div>
 
 <footer>
   ⚠️ Use somente para vídeos e músicas com direitos de download permitidos.<br>
   Powered by <strong>yt-dlp</strong> + <strong>FFmpeg</strong> + <strong>iTunes</strong> + <strong>MusicBrainz</strong>
+  <div style="margin-top: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 999px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #f0f0f0; font-size: 0.85rem; letter-spacing: 0.3px;">
+      ⚡ Feito por <strong style="color: #ff4444; font-weight: 700;">Lucas Mesquita</strong>
+    </span>
+  </div>
 </footer>
 
 <script>
@@ -561,13 +769,217 @@
   let selectedFormat = null;
   let currentData = null;
   let isDownloading = false;
+  let currentSearchMode = 'name'; // 'name' ou 'url'
 
-  // ── Buscar informações ──────────────────────────────────────
-  async function fetchInfo() {
+  function setSearchMode(mode) {
+    currentSearchMode = mode;
+    const tabName = document.getElementById('tab-search-name');
+    const tabUrl = document.getElementById('tab-search-url');
     const input = document.getElementById('url-input');
-    const url = input.value.trim();
-    if (!url) return showError('search-error', 'Cole um link do YouTube ou YouTube Music primeiro.');
 
+    if (mode === 'name') {
+      tabName.classList.add('active');
+      tabUrl.classList.remove('active');
+      input.placeholder = 'Digite o nome da música ou artista (busca no Spotify)...';
+    } else {
+      tabUrl.classList.add('active');
+      tabName.classList.remove('active');
+      input.placeholder = 'Cole o link de um vídeo, música ou playlist do YouTube...';
+    }
+    input.focus();
+  }
+
+  function isYoutubeOrUrl(str) {
+    const s = str.trim().toLowerCase();
+    return s.startsWith('http://') || s.startsWith('https://') || s.includes('youtube.com') || s.includes('youtu.be') || s.includes('spotify.com');
+  }
+
+  // ── Ponto de entrada da busca (Botão Buscar ou Enter) ───────
+  async function handleSearch() {
+    const input = document.getElementById('url-input');
+    const val = input.value.trim();
+    if (!val) {
+      return showError('search-error', 'Digite o nome da música ou cole o link.');
+    }
+
+    clearError('search-error');
+
+    // Se o usuário colou um link (URL)
+    if (isYoutubeOrUrl(val)) {
+      document.getElementById('search-results-card').style.display = 'none';
+      await fetchInfoForUrl(val);
+    } else {
+      // É texto / nome da música! Realiza a pesquisa direta no Spotify
+      document.getElementById('preview').style.display = 'none';
+      await searchSongs(val);
+    }
+  }
+
+  // Retrocompatibilidade
+  async function fetchInfo() {
+    await handleSearch();
+  }
+
+  // ── Pesquisa por nome no Spotify ────────────────────────────
+  async function searchSongs(query) {
+    setLoading('search-btn', true);
+    clearError('search-error');
+    const resultsCard = document.getElementById('search-results-card');
+    const resultsList = document.getElementById('results-list');
+    const countBadge = document.getElementById('results-count-badge');
+
+    resultsList.innerHTML = '';
+    resultsCard.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query, limit: 12 }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Erro na pesquisa');
+      }
+
+      if (!data.results || data.results.length === 0) {
+        showError('search-error', `Nenhuma música encontrada no Spotify para "${query}".`);
+        return;
+      }
+
+      countBadge.textContent = `${data.results.length} músicas encontradas`;
+      renderSearchResults(data.results);
+      resultsCard.style.display = 'block';
+      resultsCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (err) {
+      showError('search-error', err.message);
+    } finally {
+      setLoading('search-btn', false);
+    }
+  }
+
+  // ── Renderiza lista de resultados do Spotify ────────────────
+  function renderSearchResults(items) {
+    const list = document.getElementById('results-list');
+    list.innerHTML = items.map((item, idx) => {
+      const dur = formatDuration(item.duration);
+      const safeTitle = escapeHtml(item.title);
+      const safeArtist = escapeHtml(item.artist || item.uploader);
+      const safeAlbum = escapeHtml(item.album || '');
+      const thumb = item.thumbnail || '';
+
+      return `
+        <div class="result-item">
+          <div class="result-thumb-wrap">
+            <img src="${thumb}" alt="${safeTitle}" loading="lazy" onerror="this.style.display='none'">
+            ${item.duration ? `<span class="result-dur">${dur}</span>` : ''}
+          </div>
+          <div class="result-info">
+            <div class="result-title" title="${safeTitle}">${safeTitle}</div>
+            <div class="result-meta">
+              <span style="display:inline-flex; align-items:center; gap:4px; color:#1ed760; font-weight:700;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.434-5.308-1.758-8.793-.963-.335.077-.67-.133-.746-.469-.077-.334.132-.67.467-.747 3.808-.87 7.076-.502 9.721 1.116.294.18.386.564.208.856zm1.224-2.72c-.226.367-.707.482-1.074.256-2.69-1.653-6.79-2.133-9.97-1.168-.413.125-.851-.108-.976-.52-.125-.413.108-.852.52-.977 3.633-1.103 8.147-.568 11.244 1.335.367.226.482.707.256 1.074zm.105-2.835C14.692 8.95 8.08 8.73 4.707 9.755c-.495.15-1.022-.132-1.173-.627-.15-.496.132-1.022.627-1.173 3.947-1.198 11.23-.943 15.115 1.363.445.264.59.84.325 1.285-.264.444-.84.59-1.285.326z"/></svg>
+                Spotify
+              </span>
+              ${safeArtist ? ` • ${safeArtist}` : ''}
+              ${safeAlbum ? ` • <span style="opacity:0.8;">${safeAlbum}</span>` : ''}
+            </div>
+          </div>
+          <div class="result-actions">
+            <button class="btn-quick-mp3" onclick="quickDownloadMp3('${encodeURIComponent(item.url)}', '${encodeURIComponent(item.title)}', '${encodeURIComponent(item.artist || '')}', '${encodeURIComponent(item.album || '')}', '${encodeURIComponent(item.thumbnail || '')}')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Baixar MP3
+            </button>
+            <button class="btn-view-opts" onclick="selectResultForOptions('${encodeURIComponent(item.url)}', '${encodeURIComponent(item.title)}', '${encodeURIComponent(item.artist || '')}')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Opções / Vídeo
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Download Rápido de MP3 direto dos resultados do Spotify ──
+  async function quickDownloadMp3(encodedUrl, encodedTitle, encodedArtist, encodedAlbum, encodedThumbnail) {
+    if (isDownloading) return;
+    const url = decodeURIComponent(encodedUrl);
+    const title = decodeURIComponent(encodedTitle);
+    const artist = decodeURIComponent(encodedArtist || '');
+    const album = decodeURIComponent(encodedAlbum || '');
+    const thumbnail = decodeURIComponent(encodedThumbnail || '');
+
+    isDownloading = true;
+    updateActionButtonsState();
+
+    const progressCard = document.getElementById('global-progress-card');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+
+    clearError('dl-error');
+    clearError('search-error');
+    progressCard.style.display = 'block';
+    progressCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    progressBar.style.width = '10%';
+    progressText.textContent = `Buscando no Spotify e preparando áudio: "${title}"...`;
+
+    let fake = 10;
+    const ticker = setInterval(() => {
+      fake = Math.min(fake + Math.random() * 6, 88);
+      progressBar.style.width = fake + '%';
+    }, 600);
+
+    try {
+      const res = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: url,
+          title: title,
+          artist: artist,
+          album: album,
+          thumbnail: thumbnail,
+          source: 'Spotify',
+          format_id: 'bestaudio/best',
+          audio_only: true,
+          mp3_quality: '320',
+        }),
+      });
+
+      clearInterval(ticker);
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erro no download');
+      }
+
+      progressBar.style.width = '100%';
+      progressText.textContent = '✅ Concluído! Salvando arquivo...';
+
+      // Dispara download HTTP direto compatível com Android DownloadManager
+      window.location.href = data.download_url;
+      progressText.textContent = `✅ Download iniciado: ${data.filename}`;
+    } catch (err) {
+      clearInterval(ticker);
+      showError('search-error', err.message);
+      progressCard.style.display = 'none';
+    } finally {
+      isDownloading = false;
+      updateActionButtonsState();
+    }
+  }
+
+  // ── Seleciona resultado para abrir na tela de formatos / vídeo ──
+  async function selectResultForOptions(encodedUrl, encodedTitle, encodedArtist) {
+    const url = decodeURIComponent(encodedUrl);
+    const title = decodeURIComponent(encodedTitle || '');
+    const artist = decodeURIComponent(encodedArtist || '');
+    document.getElementById('url-input').value = title && artist ? `${artist} - ${title}` : url;
+    await fetchInfoForUrl(url, title, artist);
+    document.getElementById('preview').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Buscar informações de URL específica ────────────────────
+  async function fetchInfoForUrl(url, title, artist) {
     currentUrl = url;
     setLoading('search-btn', true);
     clearError('search-error');
@@ -577,7 +989,7 @@
       const res = await fetch('/api/info', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url: url, title: title || '', artist: artist || '', source: 'Spotify' }),
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Erro ao buscar dados');
@@ -698,7 +1110,8 @@
 
     document.getElementById('preview').style.display = 'block';
     document.getElementById('dl-error').innerHTML = '';
-    document.getElementById('progress-wrap').style.display = 'none';
+    const progressCard = document.getElementById('global-progress-card');
+    if (progressCard) progressCard.style.display = 'none';
   }
 
   // ── Renderizar lista de itens da playlist ──────────────────
@@ -784,6 +1197,8 @@
     const progressText = document.getElementById('progress-text');
 
     clearError('dl-error');
+    const progressCard = document.getElementById('global-progress-card');
+    if (progressCard) progressCard.style.display = 'block';
     progressWrap.style.display = 'block';
     progressBar.style.width = '10%';
     progressText.textContent = 'Buscando metadados e processando mídia...';
@@ -807,16 +1222,16 @@
       });
 
       clearInterval(ticker);
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erro no download');
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erro no download');
       }
 
       progressBar.style.width = '100%';
-      progressText.textContent = '✅ Concluído! Enviando arquivo...';
+      progressText.textContent = '✅ Concluído! Salvando arquivo...';
 
-      const blob = await res.blob();
-      triggerBlobDownload(blob, res.headers.get('Content-Disposition'), (currentData?.title || 'video') + '.' + (selectedFormat.ext || 'mp4'));
+      // Dispara o download com URL HTTP direta (100% suportada pelo Android DownloadManager)
+      window.location.href = data.download_url;
       progressText.textContent = '✅ Download concluído!';
     } catch (err) {
       clearInterval(ticker);
@@ -841,6 +1256,8 @@
     const progressText = document.getElementById('progress-text');
 
     clearError('dl-error');
+    const progressCard = document.getElementById('global-progress-card');
+    if (progressCard) progressCard.style.display = 'block';
     progressWrap.style.display = 'block';
     progressBar.style.width = '5%';
     progressText.textContent = `Iniciando download de ${items.length} faixas com metadados e comprimindo em ZIP...`;
@@ -866,16 +1283,16 @@
       });
 
       clearInterval(ticker);
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erro ao gerar ZIP da playlist');
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao gerar ZIP da playlist');
       }
 
       progressBar.style.width = '100%';
       progressText.textContent = '✅ ZIP gerado com sucesso! Baixando arquivo...';
 
-      const blob = await res.blob();
-      triggerBlobDownload(blob, res.headers.get('Content-Disposition'), (currentData?.title || 'Playlist') + '.zip');
+      // Dispara o download da URL HTTP direta
+      window.location.href = data.download_url;
       progressText.textContent = '✅ Download da playlist compactada concluído!';
     } catch (err) {
       clearInterval(ticker);
@@ -900,6 +1317,8 @@
     const progressText = document.getElementById('progress-text');
 
     clearError('dl-error');
+    const progressCard = document.getElementById('global-progress-card');
+    if (progressCard) progressCard.style.display = 'block';
     progressWrap.style.display = 'block';
 
     let successCount = 0;
@@ -921,16 +1340,15 @@
           }),
         });
 
-        if (res.ok) {
-          const blob = await res.blob();
-          triggerBlobDownload(blob, res.headers.get('Content-Disposition'), `${i + 1} - ${item.title}.${selectedFormat.ext || 'mp3'}`);
+        const data = await res.json();
+        if (res.ok && data.success) {
+          triggerDirectDownload(data.download_url, data.filename);
           successCount++;
         }
       } catch (e) {
         console.error(`Erro ao baixar item ${item.title}:`, e);
       }
-      // Pequeno intervalo entre downloads sequenciais para o browser processar
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise(r => setTimeout(r, 1000));
     }
 
     progressBar.style.width = '100%';
@@ -939,30 +1357,30 @@
     updateActionButtonsState();
   }
 
-  function triggerBlobDownload(blob, disposition, defaultName) {
-    let filename = defaultName;
-    if (disposition) {
-      const match = disposition.match(/filename\*?=(?:UTF-8'')?(.+)/i);
-      if (match) {
-        filename = decodeURIComponent(match[1].replace(/["']/g, ''));
-      }
-    }
-    const blobUrl = URL.createObjectURL(blob);
+  function triggerDirectDownload(url, filename) {
     const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = filename;
+    a.href = url;
+    if (filename) a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
   }
 
   // ── Enter key ───────────────────────────────────────────────
   document.getElementById('url-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') fetchInfo();
+    if (e.key === 'Enter') handleSearch();
   });
 
   // ── Helpers ─────────────────────────────────────────────────
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
   function setLoading(btnId, loading) {
     const btn = document.getElementById(btnId);
     btn.classList.toggle('loading', loading);
