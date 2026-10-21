@@ -840,7 +840,24 @@ def search_spotify(query, limit=10):
 
 
 def resolve_spotify_to_youtube(title, artist):
-    query = f"{artist} - {title} audio" if artist else f"{title} audio"
+    clean_t = _clean_track_title(title)
+    clean_a = artist.split(',')[0].split(';')[0].strip() if artist else ''
+    queries = []
+    if clean_t and clean_a:
+        queries.append(f"{clean_a} - {clean_t} audio")
+    if clean_t and artist and artist != clean_a:
+        queries.append(f"{artist} - {clean_t} audio")
+    if title and artist:
+        queries.append(f"{artist} - {title} audio")
+    if clean_t:
+        queries.append(f"{clean_t} audio")
+    if title and title != clean_t:
+        queries.append(f"{title} audio")
+    if clean_t and clean_a:
+        queries.append(f"{clean_a} - {clean_t}")
+    if clean_t:
+        queries.append(clean_t)
+
     ydl_opts = {
         "quiet": True,
         "extract_flat": True,
@@ -848,11 +865,16 @@ def resolve_spotify_to_youtube(title, artist):
         "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        res = ydl.extract_info(f"ytsearch1:{query}", download=False)
-        if res and res.get("entries"):
-            e = res["entries"][0]
-            v_id = e.get("id")
-            return f"https://www.youtube.com/watch?v={v_id}", e.get("title")
+        for q in queries:
+            try:
+                res = ydl.extract_info(f"ytsearch1:{q}", download=False)
+                if res and res.get("entries"):
+                    e = res["entries"][0]
+                    v_id = e.get("id")
+                    if v_id:
+                        return f"https://www.youtube.com/watch?v={v_id}", e.get("title")
+            except Exception:
+                pass
     return None, None
 
 
