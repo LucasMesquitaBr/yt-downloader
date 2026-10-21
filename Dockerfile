@@ -1,8 +1,11 @@
 FROM python:3.11-slim
 
-# Instala ffmpeg e dependencias de midia (incluindo nodejs para desafio JS do yt-dlp)
+# Instala ffmpeg, nodejs, deno e dependencias para resolver desafios do YouTube
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg curl nodejs && \
+    apt-get install -y --no-install-recommends ffmpeg curl nodejs unzip && \
+    ( [ -f /usr/bin/nodejs ] && [ ! -f /usr/bin/node ] && ln -s /usr/bin/nodejs /usr/bin/node || true ) && \
+    curl -fsSL https://deno.land/install.sh | sh && \
+    cp /root/.deno/bin/deno /usr/local/bin/deno && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

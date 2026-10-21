@@ -652,8 +652,25 @@ def _download_single_item(url: str, target_dir: Path, format_id: str, audio_only
             "postprocessors": common_pp,
         }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ytdlp_info = ydl.extract_info(url, download=True)
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ytdlp_info = ydl.extract_info(url, download=True)
+    except Exception as e_first:
+        print(f"[Download] Primeiro formato falhou ({e_first}), acionando fallback universal...")
+        fallback_opts = {
+            "format": "ba/b/best",
+            "outtmpl": output_template,
+            "quiet": True,
+            "ffmpeg_location": FFMPEG_PATH,
+            "postprocessors": [
+                {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": mp3_quality},
+                *common_pp,
+            ] if audio_only else common_pp,
+        }
+        if COOKIE_PATH.exists():
+            fallback_opts["cookiefile"] = str(COOKIE_PATH)
+        with yt_dlp.YoutubeDL(fallback_opts) as ydl2:
+            ytdlp_info = ydl2.extract_info(url, download=True)
 
     video_exts = {".mp4", ".mkv", ".webm", ".mp3", ".m4a", ".ogg", ".opus"}
     candidates = [f for f in target_dir.glob("*") if f.suffix.lower() in video_exts]
