@@ -24,6 +24,8 @@ app = Flask(__name__)
 DOWNLOAD_DIR = Path(tempfile.gettempdir()) / "yt_downloader"
 DOWNLOAD_DIR.mkdir(exist_ok=True)
 
+COOKIE_PATH = Path(__file__).parent / "cookies.txt"
+
 # FFmpeg: detecta se está no Linux (nuvem) ou no caminho do Windows local
 WIN_FFMPEG = r"C:\Users\Lucas\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.2-full_build\bin"
 if os.path.exists(WIN_FFMPEG):
@@ -620,13 +622,22 @@ def _download_single_item(url: str, target_dir: Path, format_id: str, audio_only
         }
     }
 
+    common_ydl_params = {
+        "quiet": True,
+        "ffmpeg_location": FFMPEG_PATH,
+        "js_runtimes": {"node": {}},
+        "remote_components": ["ejs:github"],
+    }
+    if COOKIE_PATH.exists():
+        common_ydl_params["cookiefile"] = str(COOKIE_PATH)
+    else:
+        common_ydl_params["extractor_args"] = common_extractor_args
+
     if audio_only:
         ydl_opts = {
+            **common_ydl_params,
             "format": "bestaudio/best",
             "outtmpl": output_template,
-            "quiet": True,
-            "ffmpeg_location": FFMPEG_PATH,
-            "extractor_args": common_extractor_args,
             "postprocessors": [
                 {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": mp3_quality},
                 *common_pp,
@@ -634,12 +645,10 @@ def _download_single_item(url: str, target_dir: Path, format_id: str, audio_only
         }
     else:
         ydl_opts = {
+            **common_ydl_params,
             "format": f"{format_id}+bestaudio/best",
             "outtmpl": output_template,
-            "quiet": True,
             "merge_output_format": "mp4",
-            "ffmpeg_location": FFMPEG_PATH,
-            "extractor_args": common_extractor_args,
             "postprocessors": common_pp,
         }
 
@@ -1011,13 +1020,20 @@ def get_info():
 
     try:
         # Extrai info básica sem baixar vídeos
-        with yt_dlp.YoutubeDL({
+        info_ydl_opts = {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "extract_flat": "in_playlist",
-            "extractor_args": {"youtube": {"player_client": ["visionos", "android"]}},
-        }) as ydl:
+            "js_runtimes": {"node": {}},
+            "remote_components": ["ejs:github"],
+        }
+        if COOKIE_PATH.exists():
+            info_ydl_opts["cookiefile"] = str(COOKIE_PATH)
+        else:
+            info_ydl_opts["extractor_args"] = {"youtube": {"player_client": ["visionos", "android"]}}
+
+        with yt_dlp.YoutubeDL(info_ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
         is_playlist = info.get("_type") == "playlist" or "entries" in info
